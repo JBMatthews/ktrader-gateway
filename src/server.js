@@ -118,6 +118,7 @@ app.post('/test-kalshi-order', async (req, res) => {
          */
         const order = {
             ticker: ticker,
+            exchange_index: -1,
             contracts: 1,
             limit_price: 0.01
         };
