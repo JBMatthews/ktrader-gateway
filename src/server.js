@@ -10,6 +10,7 @@ const {
 const {
     getBalance,
     getPosition,
+    getOwnedPosition,
     getFills
 } = require('./services/kalshiApiService');
 
@@ -160,6 +161,116 @@ app.get('/test-kalshi-fills/:ticker', async (req, res) => {
             success: false,
             error: error.message,
             kalshi: error.body || null
+        });
+
+    }
+
+});
+
+
+/*
+ * Temporary position-completion test.
+ *
+ * Calculates:
+ *
+ * DESIRED - OWNED = NEEDED
+ *
+ * This does NOT submit orders.
+ */
+app.post('/test-position-needed', async (req, res) => {
+
+    try {
+
+        const {
+            ticker,
+            desired
+        } = req.body;
+
+        if (!ticker) {
+
+            return res.status(400).json({
+                success: false,
+                error: 'ticker is required.'
+            });
+
+        }
+
+        const desiredNumber =
+            Number(desired);
+
+        if (
+            !Number.isFinite(desiredNumber) ||
+            desiredNumber < 0
+        ) {
+
+            return res.status(400).json({
+                success: false,
+                error: 'desired must be a number greater than or equal to 0.'
+            });
+
+        }
+
+        const account =
+            getAccount('kalshi_demo_01');
+
+        const position =
+            await getOwnedPosition(
+                account,
+                ticker
+            );
+
+        const owned =
+            position.owned;
+
+        const needed =
+            Math.max(
+                desiredNumber - owned,
+                0
+            );
+
+        const complete =
+            needed === 0;
+
+        console.log(
+            `[KTRADER] Position target for ${ticker}`
+        );
+
+        console.log(
+            `[KTRADER] Desired: ${desiredNumber}`
+        );
+
+        console.log(
+            `[KTRADER] Owned: ${owned}`
+        );
+
+        console.log(
+            `[KTRADER] Needed: ${needed}`
+        );
+
+        console.log(
+            `[KTRADER] Complete: ${complete}`
+        );
+
+        return res.json({
+            success: true,
+            ticker: ticker,
+            desired: desiredNumber,
+            owned: owned,
+            needed: needed,
+            complete: complete,
+            exchange_index: position.exchange_index
+        });
+
+    } catch (error) {
+
+        console.error(
+            '[KTRADER] Position completion test failed:',
+            error
+        );
+
+        return res.status(500).json({
+            success: false,
+            error: error.message
         });
 
     }
