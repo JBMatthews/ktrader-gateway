@@ -8,7 +8,9 @@ const {
 } = require('./services/accountService');
 
 const {
-    getBalance
+    getBalance,
+    getPosition,
+    getFills
 } = require('./services/kalshiApiService');
 
 const {
@@ -75,13 +77,104 @@ app.get('/test-kalshi-balance', async (req, res) => {
 
 
 /*
+ * Temporary authenticated Kalshi position test.
+ *
+ * This does NOT submit orders.
+ */
+app.get('/test-kalshi-position/:ticker', async (req, res) => {
+
+    try {
+
+        const ticker =
+            req.params.ticker;
+
+        const account =
+            getAccount('kalshi_demo_01');
+
+        const position =
+            await getPosition(
+                account,
+                ticker
+            );
+
+        return res.json({
+            success: true,
+            ticker: ticker,
+            kalshi: position
+        });
+
+    } catch (error) {
+
+        console.error(
+            '[KTRADER] Position test failed:',
+            error
+        );
+
+        return res.status(500).json({
+            success: false,
+            error: error.message
+        });
+
+    }
+
+});
+
+
+/*
+ * Temporary authenticated Kalshi fills test.
+ *
+ * This does NOT submit orders.
+ */
+app.get('/test-kalshi-fills/:ticker', async (req, res) => {
+
+    try {
+
+        const ticker =
+            req.params.ticker;
+
+        const account =
+            getAccount('kalshi_demo_01');
+
+        const fills =
+            await getFills(
+                account,
+                ticker
+            );
+
+        return res.json({
+            success: true,
+            ticker: ticker,
+            kalshi: fills
+        });
+
+    } catch (error) {
+
+        console.error(
+            '[KTRADER] Fills test failed:',
+            error
+        );
+
+        return res.status(
+            error.status || 500
+        ).json({
+            success: false,
+            error: error.message,
+            kalshi: error.body || null
+        });
+
+    }
+
+});
+
+
+/*
  * TEMPORARY DEMO ORDER TEST
  *
  * Places exactly ONE order
  * against the Kalshi Demo environment.
  *
  * This endpoint is intentionally hard-coded
- * to 1 contract at a $0.01 limit price.
+ * to 1 contract at a $0.98 limit price.
  */
 app.post('/test-kalshi-order', async (req, res) => {
 
@@ -118,9 +211,9 @@ app.post('/test-kalshi-order', async (req, res) => {
          */
         const order = {
             ticker: ticker,
-            exchange_index: -1,
+            exchange_index: 0,
             contracts: 1,
-            limit_price: 0.01
+            limit_price: 0.98
         };
 
         const result =
