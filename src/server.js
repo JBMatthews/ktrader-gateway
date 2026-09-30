@@ -11,7 +11,8 @@ const {
     getBalance,
     getPosition,
     getOwnedPosition,
-    getFills
+    getFills,
+    getOrderBook
 } = require('./services/kalshiApiService');
 
 const {
@@ -152,6 +153,55 @@ app.get('/test-kalshi-fills/:ticker', async (req, res) => {
 
         console.error(
             '[KTRADER] Fills test failed:',
+            error
+        );
+
+        return res.status(
+            error.status || 500
+        ).json({
+            success: false,
+            error: error.message,
+            kalshi: error.body || null
+        });
+
+    }
+
+});
+
+
+/*
+ * Temporary authenticated Kalshi order book test.
+ *
+ * Retrieves the current order book for one market.
+ *
+ * This does NOT submit orders.
+ */
+app.get('/test-kalshi-orderbook/:ticker', async (req, res) => {
+
+    try {
+
+        const ticker =
+            req.params.ticker;
+
+        const account =
+            getAccount('kalshi_demo_01');
+
+        const orderBook =
+            await getOrderBook(
+                account,
+                ticker
+            );
+
+        return res.json({
+            success: true,
+            ticker: ticker,
+            kalshi: orderBook
+        });
+
+    } catch (error) {
+
+        console.error(
+            '[KTRADER] Order book test failed:',
             error
         );
 
