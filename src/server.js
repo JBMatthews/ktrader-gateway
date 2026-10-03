@@ -23,6 +23,10 @@ const {
     priceYesContracts
 } = require('./services/orderBookPricingService');
 
+const {
+    qualifyOpportunity
+} = require('./services/opportunityQualificationService');
+
 
 const app = express();
 
@@ -341,8 +345,11 @@ app.post('/test-position-needed', async (req, res) => {
  * - OWNED
  * = NEEDED
  *
- * Then retrieves the live order book
- * and prices exactly the contracts needed.
+ * Then:
+ *
+ * 1. Retrieves the live order book.
+ * 2. Prices exactly the contracts needed.
+ * 3. Applies the opportunity qualification rules.
  *
  * This does NOT submit orders.
  */
@@ -420,7 +427,8 @@ app.post('/test-position-opportunity', async (req, res) => {
 
         /*
          * If the target position is already
-         * complete, there is nothing to price.
+         * complete, there is nothing to price
+         * or qualify.
          */
         if (complete) {
 
@@ -433,7 +441,8 @@ app.post('/test-position-opportunity', async (req, res) => {
                 complete: true,
                 exchange_index:
                     position.exchange_index,
-                pricing: null
+                pricing: null,
+                qualification: null
             });
 
         }
@@ -459,6 +468,27 @@ app.post('/test-position-opportunity', async (req, res) => {
             priceYesContracts(
                 orderBook,
                 needed
+            );
+
+
+        /*
+         * Step 5:
+         * Apply KTRADER's current
+         * opportunity constraints.
+         *
+         * This is intentionally local for now.
+         * Later the constraint can come from
+         * the armed strategy / trade plan.
+         */
+        const constraints = {
+            max_average_price: 0.30
+        };
+
+
+        const qualification =
+            qualifyOpportunity(
+                pricing,
+                constraints
             );
 
 
@@ -498,6 +528,21 @@ app.post('/test-position-opportunity', async (req, res) => {
             `[KTRADER] Sufficient liquidity: ${pricing.sufficient_liquidity}`
         );
 
+        console.log(
+            `[KTRADER] Qualified: ${qualification.qualified}`
+        );
+
+
+        if (
+            qualification.reasons.length > 0
+        ) {
+
+            console.log(
+                `[KTRADER] Qualification reasons: ${qualification.reasons.join(' | ')}`
+            );
+
+        }
+
 
         return res.json({
             success: true,
@@ -508,7 +553,8 @@ app.post('/test-position-opportunity', async (req, res) => {
             complete: false,
             exchange_index:
                 position.exchange_index,
-            pricing: pricing
+            pricing: pricing,
+            qualification: qualification
         });
 
     } catch (error) {
